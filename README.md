@@ -51,7 +51,7 @@ Career-Ops ([career-ops.org](https://career-ops.org), also known as **careerops*
 
 - **Evaluates offers** with a structured A-F scoring system (10 weighted dimensions)
 - **Generates tailored PDFs** -- ATS-optimized CVs customized per job description
-- **Scans portals** automatically (Greenhouse, Ashby, Lever, company pages)
+- **Scans portals** automatically (Greenhouse, Ashby, Lever, Workday, company pages)
 - **Processes in batch** -- evaluate 10+ offers in parallel with sub-agents
 - **Tracks everything** in a single source of truth with integrity checks
 
@@ -215,7 +215,18 @@ The scanner comes with **45+ companies** ready to scan and **19 search queries**
 **Automation:** n8n, Zapier, Make.com
 **European:** Factorial, Attio, Tinybird, Clarity AI, Travelperk
 
-**Job boards searched:** Ashby, Greenhouse, Lever, Wellfound, Workable, RemoteFront
+**Job boards searched:** Ashby, Greenhouse, Lever, Workday, Workable, SmartRecruiters, Recruitee, Wellfound, RemoteFront, and selected official branded boards.
+
+Provider coverage can be audited without fetching or writing job data:
+
+```bash
+node scan.mjs --coverage
+```
+
+Workday entries require their public CXS endpoint in `api:`. Official branded
+boards supported by `providers/branded-html.mjs` use an explicit
+`provider: branded-html` and allowlisted `board_type`; see
+`templates/portals.example.yml` for configuration examples.
 
 By default `node scan.mjs` (a.k.a. `npm run scan`) trusts what each ATS feed returns. Some companies leave stale postings in their public API even after the role is closed, so those expired entries can leak into `pipeline.md`. Pass `--verify` to launch Playwright after the API pass and drop expired postings before they hit the pipeline:
 

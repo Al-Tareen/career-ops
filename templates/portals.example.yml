@@ -356,7 +356,8 @@ search_queries:
 #
 # Provider routing (scan.mjs):
 #   By default each entry is auto-detected from `careers_url` against the
-#   loaded providers in providers/*.mjs (local-parser, ashby, greenhouse, lever).
+#   loaded providers in providers/*.mjs (local-parser, Ashby, Greenhouse,
+#   Lever, Workable, SmartRecruiters, Recruitee, and Workday).
 #   local-parser runs first when parser.command + parser.script are set.
 #
 #   Optional fields on a tracked_companies entry:
@@ -401,10 +402,28 @@ search_queries:
 #   workable        apply.workable.com/<slug>
 #   smartrecruiters (careers|jobs).smartrecruiters.com/<slug>
 #   recruitee       <slug>.recruitee.com
+#   workday         explicit api: https://<tenant>.<shard>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/jobs
 #
 # When the public careers URL is a branded custom domain (e.g.
 # careers.adyen.com), set `provider: smartrecruiters` explicitly to
 # bypass detect(). The `provider:` field wins over auto-detection.
+#
+# Workday requires an explicit CXS API because tenant and site names cannot
+# always be inferred from the branded careers URL:
+#
+# - name: Example Workday Company
+#   careers_url: https://example.wd5.myworkdayjobs.com/en-US/External
+#   api: https://example.wd5.myworkdayjobs.com/wday/cxs/example/External/jobs
+#   enabled: false
+#
+# A small set of official branded boards can use the server-rendered HTML
+# provider. `board_type` is restricted to an allowlisted parser and hostname:
+#
+# - name: Factorial
+#   careers_url: https://careers.factorialhr.com/
+#   provider: branded-html
+#   board_type: factorial
+#   enabled: false
 
 tracked_companies:
 

@@ -1016,6 +1016,179 @@ try {
   fail(`recruitee provider tests crashed: ${e.message}`);
 }
 
+// ── 15. PROVIDERS — Workday ───────────────────────────────────
+
+console.log('\n15. Provider — workday');
+
+try {
+  const workdayModule = await import(pathToFileURL(join(ROOT, 'providers/workday.mjs')).href);
+  const workday = workdayModule.default;
+  const { parseWorkdayResponse } = workdayModule;
+  const api = 'https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/jobs';
+
+  if (workday.id === 'workday') pass('workday.id is "workday"');
+  else fail(`workday.id is ${JSON.stringify(workday.id)}`);
+
+  const hit = workday.detect({ name: 'Acme', api });
+  if (hit?.url === api) pass('workday.detect() accepts an explicit Workday CXS jobs API');
+  else fail(`workday.detect() returned ${JSON.stringify(hit)}`);
+
+  if (workday.detect({ name: 'Bad', api: 'https://evil.example/wday/cxs/a/b/jobs' }) === null) {
+    pass('workday.detect() rejects non-Workday hosts');
+  } else {
+    fail('workday.detect() must reject non-Workday hosts');
+  }
+
+  const parsed = parseWorkdayResponse(
+    {
+      jobPostings: [
+        {
+          title: 'AI Product Manager',
+          externalPath: '/job/Texas/AI-Product-Manager_R123',
+          locationsText: 'US-TX-Houston',
+        },
+      ],
+    },
+    'Acme',
+    'https://acme.wd5.myworkdayjobs.com/en-US/External',
+  );
+  if (parsed.length === 1
+      && parsed[0].title === 'AI Product Manager'
+      && parsed[0].location === 'US-TX-Houston'
+      && parsed[0].url === 'https://acme.wd5.myworkdayjobs.com/en-US/External/job/Texas/AI-Product-Manager_R123') {
+    pass('parseWorkdayResponse normalizes title, location, and public URL');
+  } else {
+    fail(`parseWorkdayResponse returned ${JSON.stringify(parsed)}`);
+  }
+
+  let requests = 0;
+  const fetched = await workday.fetch(
+    {
+      name: 'Acme',
+      careers_url: 'https://acme.wd5.myworkdayjobs.com/en-US/External',
+      api,
+    },
+    {
+      transport: 'http',
+      fetchText: async () => { throw new Error('fetchText should not be called'); },
+      fetchJson: async (_url, opts) => {
+        requests++;
+        const body = JSON.parse(opts.body);
+        if (body.offset === 0) {
+          return {
+            total: 21,
+            jobPostings: Array.from({ length: 20 }, (_, i) => ({
+              title: `Role ${i}`,
+              externalPath: `/job/Remote/Role-${i}_R${i}`,
+            })),
+          };
+        }
+        return {
+          total: 21,
+          jobPostings: [{ title: 'Role 20', externalPath: '/job/Remote/Role-20_R20' }],
+        };
+      },
+    },
+  );
+  if (requests === 2 && fetched.length === 21) {
+    pass('workday.fetch() paginates the CXS API');
+  } else {
+    fail(`workday pagination requests=${requests}, jobs=${fetched.length}`);
+  }
+} catch (e) {
+  fail(`workday provider tests crashed: ${e.message}`);
+}
+
+// ── 16. PROVIDERS — Branded HTML ───────────────────────────────
+
+console.log('\n16. Provider — branded HTML');
+
+try {
+  const brandedModule = await import(pathToFileURL(join(ROOT, 'providers/branded-html.mjs')).href);
+  const branded = brandedModule.default;
+  const { parseFactorialHtml, parseFortoHtml, parseVintedHtml } = brandedModule;
+
+  if (branded.id === 'branded-html') pass('branded-html.id is "branded-html"');
+  else fail(`branded-html.id is ${JSON.stringify(branded.id)}`);
+
+  const factorialJobs = parseFactorialHtml(`
+    <li class='job-offer-item w-full' data-job-postings-url='https://careers.factorialhr.com/job_posting/ai-product-manager-123'>
+      <div><span><div class="font-bold factorial__headingFontFamily">AI Product &amp; Platform Manager</div></span></div>
+    </li>`, 'Factorial');
+  if (factorialJobs.length === 1
+      && factorialJobs[0].title === 'AI Product & Platform Manager'
+      && factorialJobs[0].url.endsWith('/ai-product-manager-123')) {
+    pass('Factorial branded board parser extracts jobs');
+  } else {
+    fail(`Factorial parser returned ${JSON.stringify(factorialJobs)}`);
+  }
+  const factorialUnsafe = parseFactorialHtml(`
+    <li class='job-offer-item' data-job-postings-url='https://evil.example/job_posting/123'>
+      <div class="font-bold factorial__headingFontFamily">Unsafe role</div>
+    </li>`, 'Factorial');
+  if (factorialUnsafe.length === 0) pass('Factorial parser rejects off-domain job URLs');
+  else fail(`Factorial parser accepted unsafe URL: ${JSON.stringify(factorialUnsafe)}`);
+
+  const fortoJobs = parseFortoHtml(`
+    <li class="list-item boxBorder">
+      <p class="title h5">Technical Product Manager</p>
+      <div class="list-item-location">Berlin</div>
+      <a href="https://careers.forto.com/forto-jobs/technical-product-manager-123/" class="button item-link">View Job</a>
+    </li>`, 'Forto');
+  if (fortoJobs.length === 1
+      && fortoJobs[0].title === 'Technical Product Manager'
+      && fortoJobs[0].location === 'Berlin') {
+    pass('Forto branded board parser extracts jobs');
+  } else {
+    fail(`Forto parser returned ${JSON.stringify(fortoJobs)}`);
+  }
+  const fortoUnsafe = parseFortoHtml(`
+    <li class="list-item"><p class="title">Unsafe role</p>
+      <a href="https://evil.example/forto-jobs/123/" class="item-link">View Job</a>
+    </li>`, 'Forto');
+  if (fortoUnsafe.length === 0) pass('Forto parser rejects off-domain job URLs');
+  else fail(`Forto parser accepted unsafe URL: ${JSON.stringify(fortoUnsafe)}`);
+
+  const vintedJobs = parseVintedHtml(`
+    <script id="__NEXT_DATA__" type="application/json">{
+      "props":{"jobs":{"dataMap":{"vinteden":{"jobs":[{
+        "title":"AI Product Manager",
+        "absolute_url":"https://careers.vinted.com/jobs/123?gh_jid=123",
+        "location":{"name":"Vilnius, Lithuania"}
+      }]}}}}
+    }</script>`, 'Vinted');
+  if (vintedJobs.length === 1
+      && vintedJobs[0].title === 'AI Product Manager'
+      && vintedJobs[0].location === 'Vilnius, Lithuania') {
+    pass('Vinted embedded board parser extracts jobs');
+  } else {
+    fail(`Vinted parser returned ${JSON.stringify(vintedJobs)}`);
+  }
+  const vintedUnsafe = parseVintedHtml(`
+    <script id="__NEXT_DATA__" type="application/json">{
+      "props":{"jobs":{"dataMap":{"vinteden":{"jobs":[{
+        "title":"Unsafe role",
+        "absolute_url":"https://evil.example/jobs/123"
+      }]}}}}
+    }</script>`, 'Vinted');
+  if (vintedUnsafe.length === 0) pass('Vinted parser rejects off-domain job URLs');
+  else fail(`Vinted parser accepted unsafe URL: ${JSON.stringify(vintedUnsafe)}`);
+
+  let rejected = false;
+  try {
+    await branded.fetch(
+      { name: 'Spoof', careers_url: 'https://evil.example/jobs', board_type: 'vinted' },
+      { fetchText: async () => '' },
+    );
+  } catch {
+    rejected = true;
+  }
+  if (rejected) pass('Branded board provider rejects untrusted hostnames');
+  else fail('Branded board provider accepted an untrusted hostname');
+} catch (e) {
+  fail(`branded HTML provider tests crashed: ${e.message}`);
+}
+
 // ── 12. TRACKER REPORT LINK NORMALIZATION (#760) ────────────────
 
 console.log('\n12. Tracker report-link normalization');

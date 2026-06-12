@@ -378,6 +378,7 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const verify = args.includes('--verify');
+  const coverageOnly = args.includes('--coverage');
   const companyFlag = args.indexOf('--company');
   const filterCompany = companyFlag !== -1 ? args[companyFlag + 1]?.toLowerCase() : null;
 
@@ -420,6 +421,34 @@ async function main() {
   const localParserCount = targets.filter(t => t._provider.id === 'local-parser').length;
   console.log(`Scanning ${targets.length} companies via providers (${localParserCount} local parser; ${skippedCount} skipped — no provider matched)`);
   if (dryRun) console.log('(dry run — no files will be written)\n');
+
+  if (coverageOnly) {
+    const providerCounts = new Map();
+    for (const target of targets) {
+      providerCounts.set(target._provider.id, (providerCounts.get(target._provider.id) || 0) + 1);
+    }
+    const coveredNames = new Set(targets.map(target => target.name));
+    const fallbackOnly = companies.filter(company =>
+      company
+      && typeof company === 'object'
+      && company.enabled !== false
+      && typeof company.name === 'string'
+      && !coveredNames.has(company.name)
+    );
+
+    console.log('\nProvider coverage:');
+    for (const [provider, count] of [...providerCounts.entries()].sort()) {
+      console.log(`  ${provider}: ${count}`);
+    }
+    console.log(`  agent fallback only: ${fallbackOnly.length}`);
+    if (fallbackOnly.length > 0) {
+      console.log('\nAgent fallback companies (Playwright/WebSearch required):');
+      for (const company of fallbackOnly) {
+        console.log(`  - ${company.name}${company.scan_method ? ` (${company.scan_method})` : ''}`);
+      }
+    }
+    return;
+  }
 
   // 4. Load dedup sets
   const seenUrls = loadSeenUrls();
