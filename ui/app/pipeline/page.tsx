@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getPipeline } from '@/lib/pipeline';
-import { StatusPill } from '../page';
+import { StatusPill } from '@/components/StatusPill';
 import { getCanonicalStatuses } from '@/lib/states';
 import { getCareerOpsRoot } from '@/lib/pipeline';
 import { LiveIndicator } from '@/components/LiveIndicator';
@@ -47,7 +47,7 @@ export default function PipelinePage({ searchParams }: { searchParams: SearchPar
             type="search"
             name="q"
             defaultValue={searchParams.q ?? ''}
-            placeholder="company, role, notes…"
+            placeholder="company, role, notes, report body…"
             className="bg-ink-900 border border-ink-800 rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-accent-500"
           />
         </Field>

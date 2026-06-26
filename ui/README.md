@@ -6,15 +6,24 @@ Local visual layer over your `data/applications.md`. The CLI agent stays the sou
 
 | Route | Purpose |
 |---|---|
-| `/` | Dashboard overview (KPIs, status funnel, recent activity) |
-| `/pipeline` | Application list — filter, sort, search, status edit |
+| `/` | Dashboard — KPIs, status funnel chart, score histogram, weekly cadence, recent activity |
+| `/pipeline` | Application list — filter, sort, search (incl. report body), status edit |
+| `/follow-ups` | Overdue follow-ups — sourced from `followup-cadence.mjs`, sorted by urgency |
 | `/applications/[num]` | Application detail — full report, status editor, metadata |
 | `/cv` | Read-only preview of `cv.md` |
 | `/settings` | Read-only view of `config/profile.yml` and `modes/_profile.md` |
 | `/api/applications` | JSON list (filter/sort/paginate) |
+| `/api/applications/[num]` | PATCH status/notes |
 | `/api/applications.csv` | CSV export |
+| `/api/follow-ups` | JSON from upstream `followup-cadence.mjs` |
 | `/api/events` | SSE stream — emits on filesystem changes |
 | `/output/[name]` | Serves PDFs from `output/` |
+
+## Phase 2 highlights
+
+- **Charts on `/`**: Recharts (status funnel, score histogram, weekly applications timeline).
+- **`/follow-ups`**: spawns `followup-cadence.mjs` and renders 13-overdue cards with urgency, days overdue, next-due date, contacts.
+- **Body search**: `/pipeline?q=...` now matches report markdown body, not just company/role/notes.
 
 ## Running
 
@@ -38,6 +47,7 @@ Next.js (Node, in-memory)
   ├─ chokidar watches data/, reports/
   ├─ parseApplications() reads data/applications.md on each request
   ├─ In-memory cache; rebuilds on file change (no persistent DB)
+  ├─ followups() spawns upstream followup-cadence.mjs (30s cache)
   └─ Writer uses file mutex (.ui-update.lock) for atomic edits
        ↓
   Filesystem (data/, reports/, cv.md)
@@ -52,6 +62,7 @@ Next.js (Node, in-memory)
 - Per-file mutex prevents concurrent edits (CLI agent vs UI)
 - Writer preserves original number formatting (`001` stays `001`) and report link format
 - PDF serving is path-validated (`/output/[name]` rejects paths outside `output/`)
+- Followups page wraps upstream CLI; failure surfaces as empty cards, never corrupts data
 
 ## Tests
 
@@ -61,11 +72,3 @@ npm test
 ```
 
 Covers: parser, report summarizer, status round-trip, notes round-trip, canonical-status validation, link-format preservation.
-
-## What's not here (yet)
-
-- Charts/funnel visualizations (Phase 2)
-- Follow-up overdue view (Phase 2)
-- Full-text search across reports (Phase 2)
-- CV editor / PDF generator (CLI agent owns this)
-- Application form filler (CLI agent owns this)

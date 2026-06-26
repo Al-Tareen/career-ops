@@ -1,9 +1,34 @@
 import path from 'node:path';
-import { parseApplications } from './parser';
+import { parseApplications, parseReport } from './parser';
 import type { Application, PipelineFilters, PipelineResponse } from './types';
 
 export function getCareerOpsRoot(): string {
   return process.env.CAREER_OPS_ROOT || path.resolve(process.cwd(), '..');
+}
+
+function searchReports(careerOpsRoot: string, query: string): Set<number> | null {
+  if (!query) return null;
+  const apps = parseApplications(careerOpsRoot);
+  const matches = new Set<number>();
+  const q = query.toLowerCase();
+  for (const a of apps) {
+    if (!a.reportPath) continue;
+    const summary = parseReport(careerOpsRoot, a.reportPath);
+    if (!summary) continue;
+    const haystack = [
+      summary.company,
+      summary.role,
+      summary.archetype ?? '',
+      summary.tldr ?? '',
+      summary.remote ?? '',
+      summary.comp ?? '',
+      summary.legitimacy ?? '',
+      summary.url ?? '',
+      summary.body,
+    ].join('\n').toLowerCase();
+    if (haystack.includes(q)) matches.add(a.number);
+  }
+  return matches;
 }
 
 function bucketFor(score: number | null): string {
@@ -27,11 +52,15 @@ export function getPipeline(filters: PipelineFilters = {}): PipelineResponse {
   }
   if (filters.search) {
     const q = filters.search.toLowerCase();
-    rows = rows.filter((a) =>
-      a.company.toLowerCase().includes(q) ||
-      a.role.toLowerCase().includes(q) ||
-      a.notes.toLowerCase().includes(q),
-    );
+    const reportMatches = searchReports(root, filters.search);
+    rows = rows.filter((a) => {
+      const inBasic =
+        a.company.toLowerCase().includes(q) ||
+        a.role.toLowerCase().includes(q) ||
+        a.notes.toLowerCase().includes(q);
+      if (inBasic) return true;
+      return reportMatches?.has(a.number) ?? false;
+    });
   }
   if (filters.minScore != null) rows = rows.filter((a) => (a.score ?? -1) >= filters.minScore!);
   if (filters.maxScore != null) rows = rows.filter((a) => (a.score ?? -1) <= filters.maxScore!);

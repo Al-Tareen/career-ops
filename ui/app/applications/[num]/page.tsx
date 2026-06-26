@@ -9,7 +9,7 @@ import { parseReport } from '@/lib/parser';
 import { getCanonicalStatuses } from '@/lib/states';
 import { getCareerOpsRoot } from '@/lib/pipeline';
 import { StatusEditor } from './StatusEditor';
-import { StatusPill } from '../../page';
+import { StatusPill } from '@/components/StatusPill';
 
 export const dynamic = 'force-dynamic';
 
