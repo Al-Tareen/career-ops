@@ -152,13 +152,14 @@ export const AI_SCRIPTS: AIScriptDef[] = [
   },
   {
     id: 'pipeline',
-    label: 'Process next pending URL',
-    description: 'Runs modes/pipeline.md to fetch, evaluate, and add the next pending URL.',
+    label: 'Process pending URLs',
+    description: 'Runs modes/pipeline.md to fetch, evaluate, and add pending URLs to applications.md. Pass a specific URL to evaluate just one.',
     mode: 'pipeline',
     contextFields: [
-      { kind: 'number', name: 'limit', label: 'Limit (URLs to process)', placeholder: '1' },
+      { kind: 'number', name: 'limit', label: 'How many to process', placeholder: '5' },
+      { kind: 'string', name: 'url', label: 'Specific URL (optional)', placeholder: 'leave blank to pick the highest-fit' },
     ],
-    argHint: 'Pick the highest-fit URL and evaluate it.',
+    argHint: 'Pick the highest-fit URLs and evaluate them. If a specific URL is provided, evaluate just that one.',
   },
 ];
 

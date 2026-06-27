@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { parsePipelineInbox, getInboxSummary } from '@/lib/inbox';
 import { CopyButton } from '@/components/CopyButton';
 import { RunJobButton } from '@/components/RunJobButton';
+import { ActiveJobsBanner } from '@/components/ActiveJobsBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,14 +45,27 @@ export default function InboxPage({ searchParams }: { searchParams: SearchParams
         <div>
           <h1 className="text-2xl font-bold">Inbox</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Pending URLs from <code className="mono">data/pipeline.md</code>. Paste a URL into the CLI agent to evaluate it.
+            Pending URLs from <code className="mono">data/pipeline.md</code>. Click "AI evaluate" on a row, or batch-process the top N.
           </p>
           <p className="text-slate-500 text-xs mt-1 mono">
             {summary.pending} pending · {summary.processed} processed · {summary.companies} unique companies
           </p>
         </div>
-        <RunJobButton kind="script" id="scan" label="Scan portals now" variant="primary" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <RunJobButton kind="script" id="scan" label="Scan portals now" variant="primary" />
+          <RunJobButton
+            kind="ai"
+            id="pipeline"
+            label="Process top N pending"
+            fields={[
+              { name: 'limit', label: 'How many to process', default: '5', type: 'number' },
+              { name: 'url', label: 'Specific URL (optional)', placeholder: 'leave blank to pick highest-fit' },
+            ]}
+          />
+        </div>
       </div>
+
+      <ActiveJobsBanner />
 
       <form className="flex flex-wrap gap-3 items-end" method="get">
         <label className="flex flex-col gap-1">
@@ -109,6 +123,17 @@ export default function InboxPage({ searchParams }: { searchParams: SearchParams
                     >
                       {i.role}
                     </a>
+                    <RunJobButton
+                      kind="ai"
+                      id="pipeline"
+                      label="AI evaluate"
+                      size="sm"
+                      variant="secondary"
+                      defaultArgs={{ url: i.url, limit: '1' }}
+                      fields={[
+                        { name: 'limit', label: 'Limit', default: '1', type: 'number' },
+                      ]}
+                    />
                     <CopyButton text={i.url} />
                   </li>
                 ))}
