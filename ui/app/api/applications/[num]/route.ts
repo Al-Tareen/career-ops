@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApplication } from '@/lib/pipeline';
-import { updateStatus, updateNotes } from '@/lib/writer';
+import { updateStatus, updateNotes, deleteApplication } from '@/lib/writer';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +28,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { num: strin
     }
     if (!app) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(app);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { num: string } }) {
+  const num = Number.parseInt(params.num, 10);
+  if (!Number.isFinite(num)) return NextResponse.json({ error: 'Invalid number' }, { status: 400 });
+  try {
+    const removed = await deleteApplication(process.env.CAREER_OPS_ROOT || '', num);
+    if (!removed) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ removed });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: msg }, { status: 400 });

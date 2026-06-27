@@ -90,4 +90,25 @@ describe('writer round-trip', () => {
     const after = parseApplications(root);
     expect(after.find((a) => a.number === 1)!.notes).toBe('New note text');
   });
+
+  it('deletes an application', async () => {
+    const before = parseApplications(root);
+    const removed = await (await import('../lib/writer')).deleteApplication(root, 2);
+    expect(removed?.number).toBe(2);
+    expect(removed?.company).toBe('Glean');
+
+    const after = parseApplications(root);
+    expect(after).toHaveLength(before.length - 1);
+    expect(after.find((a) => a.number === 2)).toBeUndefined();
+    expect(after.find((a) => a.number === 1)).toBeDefined();
+
+    const raw = fs.readFileSync(path.join(root, 'data', 'applications.md'), 'utf-8');
+    expect(raw).toContain('| 001 |');
+    expect(raw).not.toContain('Glean');
+  });
+
+  it('delete returns null when app not found', async () => {
+    const result = await (await import('../lib/writer')).deleteApplication(root, 9999);
+    expect(result).toBeNull();
+  });
 });

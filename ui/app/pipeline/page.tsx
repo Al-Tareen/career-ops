@@ -4,6 +4,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { getCanonicalStatuses } from '@/lib/states';
 import { getCareerOpsRoot } from '@/lib/pipeline';
 import { LiveIndicator } from '@/components/LiveIndicator';
+import { DeleteAppButton } from '@/components/DeleteAppButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,33 +89,37 @@ export default function PipelinePage({ searchParams }: { searchParams: SearchPar
 
       <div className="rounded-lg border border-ink-800 bg-ink-900/60 overflow-hidden">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="text-slate-500 border-b border-ink-800 bg-ink-950/40">
-              <th className="py-2 px-3">#</th>
-              <th className="px-3">Company</th>
-              <th className="px-3">Role</th>
-              <th className="px-3">Score</th>
-              <th className="px-3">Status</th>
-              <th className="px-3">PDF</th>
-              <th className="px-3">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No matches.</td></tr>
-            )}
-            {rows.map((a) => (
-              <tr key={a.number} className="border-b border-ink-800/50 hover:bg-ink-800/30">
-                <td className="mono px-3 text-slate-400">{a.number}</td>
-                <td className="px-3"><Link href={`/applications/${a.number}`} className="hover:underline">{a.company}</Link></td>
-                <td className="px-3 text-slate-300 truncate max-w-md">{a.role}</td>
-                <td className="mono px-3">{a.score != null ? a.score.toFixed(1) : '—'}</td>
-                <td className="px-3"><StatusPill status={a.status} /></td>
-                <td className="px-3">{a.hasPdf ? '✅' : '—'}</td>
-                <td className="mono px-3 text-slate-400">{a.date}</td>
+            <thead>
+              <tr className="text-slate-500 border-b border-ink-800 bg-ink-950/40">
+                <th className="py-2 px-3">#</th>
+                <th className="px-3">Company</th>
+                <th className="px-3">Role</th>
+                <th className="px-3">Score</th>
+                <th className="px-3">Status</th>
+                <th className="px-3">PDF</th>
+                <th className="px-3">Date</th>
+                <th className="px-3 w-8" aria-label="actions"></th>
               </tr>
-            ))}
-          </tbody>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-500">No matches.</td></tr>
+              )}
+              {rows.map((a) => (
+                <tr key={a.number} className="border-b border-ink-800/50 hover:bg-ink-800/30">
+                  <td className="mono px-3 text-slate-400">{a.number}</td>
+                  <td className="px-3"><Link href={`/applications/${a.number}`} className="hover:underline">{a.company}</Link></td>
+                  <td className="px-3 text-slate-300 truncate max-w-md">{a.role}</td>
+                  <td className="mono px-3">{a.score != null ? a.score.toFixed(1) : '—'}</td>
+                  <td className="px-3"><StatusPill status={a.status} /></td>
+                  <td className="px-3">{a.hasPdf ? '✅' : '—'}</td>
+                  <td className="mono px-3 text-slate-400">{a.date}</td>
+                  <td className="px-3 text-right">
+                    <DeleteAppButton number={a.number} company={a.company} role={a.role} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
         </table>
       </div>
     </div>

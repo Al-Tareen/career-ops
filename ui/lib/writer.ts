@@ -45,8 +45,9 @@ async function releaseLock(careerOpsRoot: string, id: string): Promise<void> {
   }
 }
 
-const FIELD_DELIM = '\t';
 const PREFIX = '| ';
+const FIELD_DELIM = ' | ';
+const SUFFIX = ' |';
 
 function pad2(n: number): string { return n < 10 ? `0${n}` : `${n}`; }
 
@@ -55,7 +56,7 @@ function formatDate(d: Date): string {
 }
 
 export function serializeRow(app: Application): string {
-  const scoreText = app.score != null ? `${app.score}/5` : app.scoreRaw;
+  const scoreText = app.scoreRaw || (app.score != null ? `${app.score}/5` : '');
   const pdf = app.hasPdf ? '✅' : '❌';
   const reportCell = app.reportLink ?? (app.reportPath ? `[${app.numberRaw}](${app.reportPath})` : '');
   const fields = [
@@ -69,7 +70,7 @@ export function serializeRow(app: Application): string {
     reportCell,
     app.notes,
   ];
-  return `${PREFIX}${fields.join(FIELD_DELIM)}`;
+  return `${PREFIX}${fields.join(FIELD_DELIM)}${SUFFIX}`;
 }
 
 function detectSeparator(line: string): 'tab' | 'pipe' {
@@ -77,44 +78,38 @@ function detectSeparator(line: string): 'tab' | 'pipe' {
 }
 
 function buildLine(fields: string[], sep: 'tab' | 'pipe'): string {
-  if (sep === 'tab') return `${PREFIX}${fields.join(FIELD_DELIM)}`;
-  return `| ${fields.join(' | ')} |`;
+  if (sep === 'tab') return `${PREFIX}${fields.join(FIELD_DELIM)}\t`;
+  return `${PREFIX}${fields.join(FIELD_DELIM)}${SUFFIX}`;
 }
 
 export async function writeApplications(careerOpsRoot: string, apps: Application[]): Promise<void> {
   const filePath = path.join(careerOpsRoot, 'data', 'applications.md');
   const raw = await fsp.readFile(filePath, 'utf-8');
   const lines = raw.split(/\r?\n/);
-  const sep = lines.some((l) => l.includes('\t')) ? 'tab' : 'pipe';
 
-  const updated = lines.map((line) => {
+  const headerLines: string[] = [];
+  let pastHeader = false;
+  for (const line of lines) {
+    if (pastHeader) break;
+    headerLines.push(line);
     const t = line.trim();
-    if (!t.startsWith('|')) return line;
-    if (t.startsWith('|---') || t.startsWith('| #') || t.startsWith('|#')) return line;
-    if (t.startsWith('# ')) return line;
-    const fields = sep === 'tab'
-      ? line.replace(/^\|/, '').split('\t').map((p) => p.replace(/\|/g, '').trim())
-      : line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((p) => p.trim());
-    if (fields.length < 8) return line;
-    const number = Number.parseInt(fields[0], 10);
-    if (!Number.isFinite(number)) return line;
-    const match = apps.find((a) => a.number === number);
-    if (!match) return line;
-    return buildLine(
-      [
-        match.numberRaw,
-        match.date,
-        match.company,
-        match.role,
-        match.scoreRaw || (match.score != null ? `${match.score}/5` : ''),
-        match.status,
-        match.hasPdf ? '✅' : '❌',
-        match.reportLink ?? (match.reportPath ? `[${match.numberRaw}](${match.reportPath})` : ''),
-        match.notes,
-      ],
-      sep,
-    );
-  });
+    if (t.startsWith('|---') || t.startsWith('|#') || t.startsWith('| #')) {
+      pastHeader = true;
+    }
+  }
+
+  const trailingLines: string[] = [];
+  for (let i = lines.length - 1; i >= headerLines.length; i--) {
+    const t = lines[i].trim();
+    if (t.startsWith('|')) break;
+    trailingLines.unshift(lines[i]);
+  }
+
+  const updated = [
+    ...headerLines,
+    ...apps.map((a) => serializeRow(a)),
+    ...trailingLines,
+  ];
 
   const tmp = `${filePath}.${process.pid}.tmp`;
   await fsp.writeFile(tmp, updated.join('\n'), 'utf-8');
@@ -155,6 +150,23 @@ export async function updateNotes(
     target.notes = newNotes;
     await writeApplications(careerOpsRoot, apps);
     return target;
+  } finally {
+    await releaseLock(careerOpsRoot, lockId);
+  }
+}
+
+export async function deleteApplication(
+  careerOpsRoot: string,
+  number: number,
+): Promise<Application | null> {
+  const lockId = await acquireLock(careerOpsRoot);
+  try {
+    const apps = parseApplications(careerOpsRoot);
+    const idx = apps.findIndex((a) => a.number === number);
+    if (idx < 0) return null;
+    const [removed] = apps.splice(idx, 1);
+    await writeApplications(careerOpsRoot, apps);
+    return removed;
   } finally {
     await releaseLock(careerOpsRoot, lockId);
   }
